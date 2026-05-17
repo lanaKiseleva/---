@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Кампус МАДИ — План территории</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Geologica:wght@300;400;500;600&display=swap');
+
+:root {
+–bg: #0e1117;
+–surface: #161b26;
+–surface2: #1e2636;
+–border: #2a3450;
+–accent: #e8b84b;
+–accent2: #4b8fe8;
+–accent3: #4be8a4;
+–accent4: #e8604b;
+–text: #d4dce8;
+–muted: #6b7a99;
+–road: #252e42;
+–road-line: #3a4560;
+–grass: #1a2d1e;
+}
+
+- { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+background: var(–bg);
+color: var(–text);
+font-family: ‘Geologica’, sans-serif;
+min-height: 100vh;
+overflow: hidden;
+}
+
+/* Header */
+.header {
+position: fixed;
+top: 0; left: 0; right: 0;
+z-index: 100;
+background: linear-gradient(180deg, rgba(14,17,23,0.98) 0%, rgba(14,17,23,0.0) 100%);
+padding: 16px 24px 40px;
+display: flex;
+align-items: flex-start;
+gap: 16px;
+}
+.logo-block {
+display: flex;
+align-items: center;
+gap: 12px;
+}
+.logo-emblem {
+width: 44px; height: 44px;
+background: var(–accent);
+border-radius: 4px;
+display: flex; align-items: center; justify-content: center;
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 22px;
+color: #0e1117;
+letter-spacing: -1px;
+flex-shrink: 0;
+}
+.logo-text h1 {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 26px;
+letter-spacing: 2px;
+color: #fff;
+line-height: 1;
+}
+.logo-text p {
+font-size: 10px;
+color: var(–muted);
+letter-spacing: 1px;
+text-transform: uppercase;
+margin-top: 2px;
+}
+.metro-badge {
+margin-left: auto;
+display: flex;
+align-items: center;
+gap: 8px;
+background: var(–surface2);
+border: 1px solid var(–border);
+border-radius: 20px;
+padding: 6px 14px;
+font-size: 12px;
+color: var(–muted);
+}
+.metro-circle {
+width: 18px; height: 18px;
+border-radius: 50%;
+background: #d0412a;
+display: flex; align-items: center; justify-content: center;
+font-size: 10px;
+font-weight: 700;
+color: white;
+flex-shrink: 0;
+}
+
+/* Main map canvas */
+.map-wrapper {
+position: fixed;
+inset: 0;
+overflow: hidden;
+cursor: grab;
+user-select: none;
+}
+.map-wrapper:active { cursor: grabbing; }
+
+.map-canvas {
+position: absolute;
+width: 1200px;
+height: 850px;
+transform-origin: 0 0;
+}
+
+/* Background terrain */
+.terrain {
+position: absolute;
+inset: 0;
+background: #0b1018;
+}
+
+/* Grid lines */
+.grid {
+position: absolute;
+inset: 0;
+background-image:
+linear-gradient(rgba(42,52,80,0.3) 1px, transparent 1px),
+linear-gradient(90deg, rgba(42,52,80,0.3) 1px, transparent 1px);
+background-size: 40px 40px;
+}
+
+/* Roads */
+.road {
+position: absolute;
+background: var(–road);
+border: 1px solid var(–road-line);
+}
+.road-label {
+position: absolute;
+font-size: 10px;
+font-weight: 500;
+color: var(–muted);
+letter-spacing: 1px;
+text-transform: uppercase;
+white-space: nowrap;
+}
+
+/* Green areas */
+.green {
+position: absolute;
+background: var(–grass);
+border: 1px solid #243020;
+border-radius: 4px;
+}
+
+/* Buildings */
+.building {
+position: absolute;
+border-radius: 4px;
+cursor: pointer;
+transition: all 0.2s ease;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-direction: column;
+}
+.building:hover {
+filter: brightness(1.3);
+transform: scale(1.04);
+z-index: 50;
+}
+.building.main    { background: linear-gradient(135deg, #2d4a8a, #1e3366); border: 2px solid #4b8fe8; }
+.building.lab     { background: linear-gradient(135deg, #2a5c3f, #1c3e2b); border: 2px solid #4be8a4; }
+.building.admin   { background: linear-gradient(135deg, #6b3a1f, #4a2714); border: 2px solid #e8b84b; }
+.building.sport   { background: linear-gradient(135deg, #5c2a6b, #3e1c4a); border: 2px solid #b44be8; }
+.building.canteen { background: linear-gradient(135deg, #5c3a1a, #3e2710); border: 2px solid #e86a4b; }
+.building.dorm    { background: linear-gradient(135deg, #1e3d4a, #142833); border: 2px solid #4bcde8; }
+.building.library { background: linear-gradient(135deg, #3a2d5c, #251e3e); border: 2px solid #8b4be8; }
+.building.garage  { background: linear-gradient(135deg, #2a2a2a, #1a1a1a); border: 2px solid #666; }
+.building.new     { background: linear-gradient(135deg, #1e4a5c, #122d3e); border: 2px solid #4be8e8; }
+
+.building-num {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 22px;
+line-height: 1;
+color: rgba(255,255,255,0.9);
+text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+.building-tag {
+font-size: 8px;
+font-weight: 600;
+letter-spacing: 0.5px;
+color: rgba(255,255,255,0.5);
+text-transform: uppercase;
+margin-top: 2px;
+}
+
+/* Tooltip */
+.tooltip {
+position: fixed;
+z-index: 200;
+pointer-events: none;
+opacity: 0;
+transition: opacity 0.15s ease;
+max-width: 260px;
+}
+.tooltip.visible { opacity: 1; }
+.tooltip-inner {
+background: rgba(14,17,23,0.97);
+border: 1px solid var(–border);
+border-radius: 10px;
+padding: 14px 16px;
+box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+}
+.tooltip-inner::before {
+content: ‘’;
+display: block;
+width: 3px;
+height: 100%;
+position: absolute;
+left: 0; top: 0;
+border-radius: 10px 0 0 10px;
+}
+.t-name {
+font-weight: 600;
+font-size: 14px;
+color: #fff;
+margin-bottom: 4px;
+line-height: 1.3;
+}
+.t-desc {
+font-size: 12px;
+color: var(–muted);
+line-height: 1.5;
+margin-bottom: 8px;
+}
+.t-tags {
+display: flex;
+flex-wrap: wrap;
+gap: 4px;
+}
+.t-tag {
+background: var(–surface2);
+border: 1px solid var(–border);
+border-radius: 4px;
+padding: 2px 8px;
+font-size: 10px;
+color: var(–text);
+}
+
+/* Legend */
+.legend {
+position: fixed;
+bottom: 24px;
+right: 24px;
+z-index: 100;
+background: rgba(22,27,38,0.95);
+border: 1px solid var(–border);
+border-radius: 12px;
+padding: 16px;
+min-width: 200px;
+backdrop-filter: blur(10px);
+}
+.legend-title {
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 14px;
+letter-spacing: 2px;
+color: var(–muted);
+margin-bottom: 10px;
+}
+.legend-item {
+display: flex;
+align-items: center;
+gap: 8px;
+margin-bottom: 6px;
+font-size: 12px;
+color: var(–text);
+}
+.legend-dot {
+width: 12px; height: 12px;
+border-radius: 2px;
+flex-shrink: 0;
+}
+
+/* Controls */
+.controls {
+position: fixed;
+bottom: 24px;
+left: 24px;
+z-index: 100;
+display: flex;
+flex-direction: column;
+gap: 4px;
+}
+.ctrl-btn {
+width: 40px; height: 40px;
+background: rgba(22,27,38,0.95);
+border: 1px solid var(–border);
+border-radius: 8px;
+color: var(–text);
+font-size: 20px;
+cursor: pointer;
+display: flex; align-items: center; justify-content: center;
+transition: all 0.15s;
+user-select: none;
+line-height: 1;
+}
+.ctrl-btn:hover { background: var(–surface2); color: #fff; }
+
+/* Compass */
+.compass {
+position: fixed;
+top: 90px;
+right: 24px;
+z-index: 100;
+width: 44px; height: 44px;
+background: rgba(22,27,38,0.95);
+border: 1px solid var(–border);
+border-radius: 50%;
+display: flex; align-items: center; justify-content: center;
+font-family: ‘Bebas Neue’, sans-serif;
+font-size: 13px;
+color: var(–accent);
+letter-spacing: 0;
+flex-direction: column;
+line-height: 1.1;
+}
+.compass span { font-size: 8px; color: var(–muted); }
+
+/* Entrance marker */
+.entrance {
+position: absolute;
+z-index: 20;
+}
+.entrance-dot {
+width: 16px; height: 16px;
+background: var(–accent);
+border-radius: 50%;
+border: 3px solid var(–bg);
+box-shadow: 0 0 12px rgba(232,184,75,0.6);
+}
+.entrance-label {
+position: absolute;
+left: 22px; top: 0;
+font-size: 10px;
+font-weight: 600;
+color: var(–accent);
+white-space: nowrap;
+text-transform: uppercase;
+letter-spacing: 1px;
+}
+
+/* Parking */
+.parking {
+position: absolute;
+background: rgba(42,52,80,0.5);
+border: 1px dashed #3a4560;
+border-radius: 4px;
+display: flex; align-items: center; justify-content: center;
+font-size: 16px;
+color: #3a4560;
+}
+
+/* Monument */
+.monument {
+position: absolute;
+z-index: 10;
+}
+.monument-star {
+width: 20px; height: 20px;
+background: transparent;
+display: flex; align-items: center; justify-content: center;
+font-size: 18px;
+}
+.monument-label {
+position: absolute;
+top: 22px; left: 50%;
+transform: translateX(-50%);
+font-size: 9px;
+color: #8b7a4b;
+white-space: nowrap;
+text-align: center;
+}
+
+/* Address strip */
+.address-strip {
+position: fixed;
+bottom: 24px;
+left: 50%;
+transform: translateX(-50%);
+z-index: 100;
+background: rgba(22,27,38,0.95);
+border: 1px solid var(–border);
+border-radius: 20px;
+padding: 8px 20px;
+font-size: 11px;
+color: var(–muted);
+letter-spacing: 0.5px;
+white-space: nowrap;
+}
+.address-strip strong { color: var(–text); }
+</style>
+
+</head>
+<body>
+
+<!-- Header -->
+
+<div class="header">
+  <div class="logo-block">
+    <div class="logo-emblem">М</div>
+    <div class="logo-text">
+      <h1>МАДИ</h1>
+      <p>План кампуса · Ленинградский проспект, 64</p>
+    </div>
+  </div>
+  <div class="metro-badge">
+    <div class="metro-circle">М</div>
+    ст. «Аэропорт»
+  </div>
+</div>
+
+<!-- Compass -->
+
+<div class="compass">С<span>↑</span></div>
+
+<!-- Map wrapper -->
+
+<div class="map-wrapper" id="mapWrapper">
+  <div class="map-canvas" id="mapCanvas">
+
+```
+<!-- Terrain bg -->
+<div class="terrain"></div>
+<div class="grid"></div>
+
+<!-- Green zones -->
+<div class="green" style="left:80px;top:140px;width:340px;height:200px;border-radius:8px;"></div>
+<div class="green" style="left:80px;top:390px;width:160px;height:120px;"></div>
+<div class="green" style="left:600px;top:180px;width:200px;height:150px;"></div>
+<div class="green" style="left:680px;top:530px;width:160px;height:120px;"></div>
+<div class="green" style="left:900px;top:200px;width:220px;height:160px;"></div>
+<div class="green" style="left:920px;top:460px;width:180px;height:140px;"></div>
+
+<!-- Ленинградский проспект (main road) -->
+<div class="road" style="left:0;top:60px;width:1200px;height:70px;border-radius:0;border-left:none;border-right:none;"></div>
+<div class="road-label" style="left:30px;top:78px;transform:none;font-size:11px;color:#4a5a7a;letter-spacing:2px;">ЛЕНИНГРАДСКИЙ ПРОСПЕКТ</div>
+<!-- дорожная разметка -->
+<div style="position:absolute;left:0;top:95px;width:1200px;height:2px;background:repeating-linear-gradient(90deg,#2a3a5a 0,#2a3a5a 30px,transparent 30px,transparent 50px);"></div>
+
+<!-- Internal campus road -->
+<div class="road" style="left:80px;top:130px;width:800px;height:18px;"></div>
+<div class="road" style="left:460px;top:130px;width:18px;height:500px;"></div>
+<div class="road" style="left:80px;top:400px;width:400px;height:18px;"></div>
+<div class="road" style="left:80px;top:540px;width:800px;height:18px;"></div>
+<div class="road" style="left:700px;top:250px;width:18px;height:300px;"></div>
+
+<!-- ─────────── КОРПУСА ─────────── -->
+
+<!-- 1. Главный корпус (большой, центральный) -->
+<div class="building main"
+  style="left:120px;top:165px;width:280px;height:200px;"
+  data-name="Главный учебный корпус"
+  data-desc="Основное здание университета. Аудитории, деканаты факультетов, актовый зал, спортивный зал, МФЦ (ауд. 143), приёмная комиссия (1 этаж). Столовые на 2 и 4 этажах через переход."
+  data-tags="Учебный·Деканаты·Приёмная комиссия·МФЦ·Актовый зал"
+  data-color="#4b8fe8">
+  <div class="building-num">01</div>
+  <div class="building-tag">Главный корпус</div>
+</div>
+
+<!-- 2. Лабораторный (новый) корпус -->
+<div class="building new"
+  style="left:500px;top:165px;width:180px;height:220px;"
+  data-name="Новый лабораторный корпус"
+  data-desc="10-этажный корпус, пристроенный в 1977 году (арх. А.М. Алхазов). Лабораторные кафедр, Военный учебный центр (6 этаж), библиотека (ауд. 111н — выдача учебников I–II курсов)."
+  data-tags="Лаборатории·ВУЦ·Библиотека·Новый корпус"
+  data-color="#4be8e8">
+  <div class="building-num">02</div>
+  <div class="building-tag">Новый корпус</div>
+</div>
+
+<!-- 3. Административный корпус -->
+<div class="building admin"
+  style="left:120px;top:430px;width:200px;height:120px;"
+  data-name="Административный корпус"
+  data-desc="Заочный факультет, Институт повышения квалификации (ИПК), ректорат, управленческие подразделения. Адрес: Ленинградский пр-кт, 64."
+  data-tags="Ректорат·Заочный факультет·ИПК·Администрация"
+  data-color="#e8b84b">
+  <div class="building-num">03</div>
+  <div class="building-tag">Адм. корпус</div>
+</div>
+
+<!-- 4. Корпус столовой -->
+<div class="building canteen"
+  style="left:380px;top:430px;width:120px;height:100px;"
+  data-name="Корпус столовой"
+  data-desc="Отдельный корпус питания. Соединён переходом с главным корпусом (3 этаж). Столовые на 2-м и 4-м этажах. Буфеты на 1–4 этажах главного корпуса."
+  data-tags="Столовая·Питание·Буфет"
+  data-color="#e86a4b">
+  <div class="building-num">04</div>
+  <div class="building-tag">Столовая</div>
+</div>
+
+<!-- 5. Спортивный комплекс -->
+<div class="building sport"
+  style="left:740px;top:180px;width:180px;height:120px;"
+  data-name="Спортивный комплекс"
+  data-desc="Физкультурно-оздоровительный блок. Тренажёрные залы, площадки для занятий физической культурой, соревнований МАДИ. Сборные по автоспорту (Формула МАДИ, Баха Электро, Смарт МОТО)."
+  data-tags="Спорт·ФОК·Тренажёрный зал"
+  data-color="#b44be8">
+  <div class="building-num">05</div>
+  <div class="building-tag">Спорткомплекс</div>
+</div>
+
+<!-- 6. Учебно-лабораторный корпус (стр. 3) -->
+<div class="building lab"
+  style="left:740px;top:350px;width:160px;height:110px;"
+  data-name="Учебно-лабораторный корпус"
+  data-desc="Учебно-лабораторный корпус, стр. 3. Специализированные лаборатории кафедр автомобильного и дорожного профиля. Научно-исследовательские лаборатории."
+  data-tags="Лаборатории·НИЛ·Стр. 3"
+  data-color="#4be8a4">
+  <div class="building-num">06</div>
+  <div class="building-tag">Уч.-лаб. корпус</div>
+</div>
+
+<!-- 7. Научно-техническая библиотека -->
+<div class="building library"
+  style="left:940px;top:165px;width:160px;height:100px;"
+  data-name="Научно-техническая библиотека"
+  data-desc="НТБ МАДИ. Фонд научной и учебной литературы. Читальные залы, доступ к электронным ресурсам. Открыта для студентов, аспирантов и преподавателей."
+  data-tags="Библиотека·НТБ·Читальный зал"
+  data-color="#8b4be8">
+  <div class="building-num">07</div>
+  <div class="building-tag">Библиотека</div>
+</div>
+
+<!-- 8. Гараж / автополигон -->
+<div class="building garage"
+  style="left:940px;top:320px;width:180px;height:130px;"
+  data-name="Гараж и автополигон"
+  data-desc="Технические корпуса. Студенческие конструкторские бюро: Формула МАДИ, Баха Электро, Смарт МОТО, Автокросс. Испытательная техника и учебные автомобили."
+  data-tags="СКБ·Гараж·Формула МАДИ·Баха Электро"
+  data-color="#888">
+  <div class="building-num">08</div>
+  <div class="building-tag">Гараж / СКБ</div>
+</div>
+
+<!-- 9. Общежитие 1 -->
+<div class="building dorm"
+  style="left:120px;top:590px;width:120px;height:160px;"
+  data-name="Студенческое общежитие №1"
+  data-desc="Студенческий городок МАДИ. Корп. Кочновский пр-д, д. 7, к. 1. Входит в состав Студгородка, которым управляет Управление студенческого городка."
+  data-tags="Общежитие·Студгородок·Кочновский пр-д"
+  data-color="#4bcde8">
+  <div class="building-num">Д1</div>
+  <div class="building-tag">Общежитие</div>
+</div>
+
+<!-- 9b. Общежитие 2 -->
+<div class="building dorm"
+  style="left:280px;top:590px;width:120px;height:160px;"
+  data-name="Студенческое общежитие №2"
+  data-desc="Студенческое общежитие, второй блок. Кочновский пр-д, д. 7, к. 2. Медпункт, прачечная, комнаты отдыха."
+  data-tags="Общежитие·Студгородок"
+  data-color="#4bcde8">
+  <div class="building-num">Д2</div>
+  <div class="building-tag">Общежитие</div>
+</div>
+
+<!-- 10. ИПК (отдельный корпус) -->
+<div class="building admin"
+  style="left:960px;top:490px;width:140px;height:100px;"
+  data-name="Институт повышения квалификации"
+  data-desc="ИПК — дополнительное профессиональное образование. Повышение квалификации и переподготовка специалистов дорожно-транспортного комплекса. Тел.: +7(499) 155-03-64."
+  data-tags="ИПК·ДПО·Переподготовка"
+  data-color="#e8b84b">
+  <div class="building-num">09</div>
+  <div class="building-tag">ИПК</div>
+</div>
+
+<!-- Парковки -->
+<div class="parking" style="left:490px;top:90px;width:120px;height:40px;border-radius:4px;">🅿</div>
+<div class="parking" style="left:850px;top:90px;width:80px;height:40px;border-radius:4px;">🅿</div>
+
+<!-- Главный вход -->
+<div class="entrance" style="left:215px;top:122px;">
+  <div class="entrance-dot"></div>
+  <div class="entrance-label">Главный вход</div>
+</div>
+
+<!-- Вход с проспекта -->
+<div class="entrance" style="left:500px;top:122px;">
+  <div class="entrance-dot" style="background:#4be8e8;box-shadow:0 0 12px rgba(75,232,232,0.6);"></div>
+  <div class="entrance-label" style="color:#4be8e8;">Вход (новый корп.)</div>
+</div>
+
+<!-- Памятник воинам-автомобилистам -->
+<div class="monument" style="left:200px;top:148px;">
+  <div class="monument-star">⭐</div>
+  <div class="monument-label">Памятник<br>воинам-авто­мобилистам</div>
+</div>
+
+<!-- ГАЗ-АА (полуторка) -->
+<div class="monument" style="left:380px;top:148px;">
+  <div class="monument-star" style="font-size:20px;">🚛</div>
+  <div class="monument-label">ГАЗ-АА<br>«Полуторка»</div>
+</div>
+
+<!-- Road labels inside campus -->
+<div class="road-label" style="left:120px;top:140px;color:#2a3a5a;">Внутренняя дорога</div>
+<div class="road-label" style="left:465px;top:430px;color:#2a3a5a;writing-mode:vertical-lr;transform:rotate(180deg);letter-spacing:2px;">Центральная аллея</div>
+
+<!-- Annotation: Кочновский проезд (below campus) -->
+<div class="road" style="left:0;top:780px;width:1200px;height:40px;"></div>
+<div class="road-label" style="left:30px;top:793px;color:#3a4a6a;">КОЧНОВСКИЙ ПРОЕЗД (Студгородок)</div>
+```
+
+  </div><!-- map-canvas -->
+</div><!-- map-wrapper -->
+
+<!-- Tooltip -->
+
+<div class="tooltip" id="tooltip">
+  <div class="tooltip-inner">
+    <div class="t-name" id="ttName"></div>
+    <div class="t-desc" id="ttDesc"></div>
+    <div class="t-tags" id="ttTags"></div>
+  </div>
+</div>
+
+<!-- Legend -->
+
+<div class="legend">
+  <div class="legend-title">Легенда</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2d4a8a;border:1px solid #4b8fe8;"></div>Учебный корпус</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1e4a5c;border:1px solid #4be8e8;"></div>Новый / лабораторный</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2a5c3f;border:1px solid #4be8a4;"></div>Уч.-лабораторный</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6b3a1f;border:1px solid #e8b84b;"></div>Административный</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#5c2a6b;border:1px solid #b44be8;"></div>Спортивный</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#5c3a1a;border:1px solid #e86a4b;"></div>Столовая / сервис</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#1e3d4a;border:1px solid #4bcde8;"></div>Общежитие</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3a2d5c;border:1px solid #8b4be8;"></div>Библиотека</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2a2a2a;border:1px solid #666;"></div>Гараж / СКБ</div>
+</div>
+
+<!-- Zoom controls -->
+
+<div class="controls">
+  <button class="ctrl-btn" id="zoomIn" title="Увеличить">+</button>
+  <button class="ctrl-btn" id="zoomOut" title="Уменьшить">−</button>
+  <button class="ctrl-btn" id="zoomReset" title="Сбросить" style="font-size:13px;">⌖</button>
+</div>
+
+<!-- Address -->
+
+<div class="address-strip">
+  <strong>МАДИ</strong> · Москва, Ленинградский пр-кт, 64 · м. Аэропорт · <strong>info@madi.ru</strong>
+</div>
+
+<script>
+  // ── Pan & Zoom ──────────────────────────────────────
+  const wrapper = document.getElementById('mapWrapper');
+  const canvas  = document.getElementById('mapCanvas');
+
+  let scale = 0.85, tx = 60, ty = 30;
+  let dragging = false, startX = 0, startY = 0, startTx = 0, startTy = 0;
+
+  function applyTransform() {
+    canvas.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  }
+  applyTransform();
+
+  wrapper.addEventListener('mousedown', e => {
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    startTx = tx; startTy = ty;
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    tx = startTx + (e.clientX - startX);
+    ty = startTy + (e.clientY - startY);
+    applyTransform();
+  });
+  window.addEventListener('mouseup', () => dragging = false);
+
+  wrapper.addEventListener('wheel', e => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    scale = Math.min(2.5, Math.max(0.4, scale * delta));
+    applyTransform();
+  }, { passive: false });
+
+  // Touch
+  let lastDist = 0;
+  wrapper.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      dragging = true;
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+      startTx = tx; startTy = ty;
+    } else if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastDist = Math.hypot(dx, dy);
+    }
+  });
+  wrapper.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && dragging) {
+      tx = startTx + (e.touches[0].clientX - startX);
+      ty = startTy + (e.touches[0].clientY - startY);
+    } else if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      scale = Math.min(2.5, Math.max(0.4, scale * (dist / lastDist)));
+      lastDist = dist;
+    }
+    applyTransform();
+  }, { passive: false });
+  wrapper.addEventListener('touchend', () => dragging = false);
+
+  document.getElementById('zoomIn').addEventListener('click', () => {
+    scale = Math.min(2.5, scale * 1.2); applyTransform();
+  });
+  document.getElementById('zoomOut').addEventListener('click', () => {
+    scale = Math.max(0.4, scale / 1.2); applyTransform();
+  });
+  document.getElementById('zoomReset').addEventListener('click', () => {
+    scale = 0.85; tx = 60; ty = 30; applyTransform();
+  });
+
+  // ── Tooltips ────────────────────────────────────────
+  const tooltip = document.getElementById('tooltip');
+  const ttName  = document.getElementById('ttName');
+  const ttDesc  = document.getElementById('ttDesc');
+  const ttTags  = document.getElementById('ttTags');
+
+  document.querySelectorAll('.building').forEach(b => {
+    b.addEventListener('mouseenter', e => {
+      ttName.textContent = b.dataset.name;
+      ttDesc.textContent = b.dataset.desc;
+      ttTags.innerHTML = b.dataset.tags.split('·').map(t =>
+        `<span class="t-tag">${t}</span>`
+      ).join('');
+      tooltip.style.borderColor = b.dataset.color || '#4b8fe8';
+      tooltip.classList.add('visible');
+      posTooltip(e);
+    });
+    b.addEventListener('mousemove', posTooltip);
+    b.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+  });
+
+  function posTooltip(e) {
+    const tw = 270, th = 150;
+    let x = e.clientX + 16;
+    let y = e.clientY + 16;
+    if (x + tw > window.innerWidth)  x = e.clientX - tw - 8;
+    if (y + th > window.innerHeight) y = e.clientY - th - 8;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+  }
+</script>
+
+</body>
+</html>
